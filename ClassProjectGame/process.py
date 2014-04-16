@@ -117,16 +117,16 @@ def collisions():
 		
 			if projectile.if_this_variable_is_true_then_freeze:
 
-				enemies.image = image = pygame.image.load("images/snowman2.png") # regular snowball
+				enemies.image = image = pygame.image.load("images/snowman3.png") # regular snowball
 
-			else:
+			# else:
 
-				if enemies.velx > 0: # is dead
-					enemies.velx = 0 # enemies is now paralysed
-					enemies.image = pygame.image.load("images/snowman3.png") # freeze snowball
-				elif enemies.velx < 0:
-					enemies.image = pygame.image.load("images/snowman3.png")
-					enemies.image = pygame.transform.flip(enemies.image, True, False)
+			# 	if enemies.velx > 0: # is dead
+			# 		enemies.velx = 0 # enemies is now paralysed
+			# 		enemies.image = pygame.image.load("images/snowman3.png") # freeze snowball
+			# 	elif enemies.velx < 0:
+			# 		enemies.image = pygame.image.load("images/snowman3.png")
+			# 		enemies.image = pygame.transform.flip(enemies.image, True, False)
 
 			projectile.rect.x = 2 * -projectile.rect.width
 			projectile.destroy()

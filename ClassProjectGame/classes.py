@@ -114,7 +114,7 @@ class Enemies(BaseClass):
 
 			if enemies.health <= 0: # if our enemies is dead
 				if enemies.rect.y + enemies.rect.height < SCREENHEIGHT: # check to see if it is still above the bottom 
-					enemies.rect.y += enemies.vely # if true it drops down
+					enemies.velx = 0 # if true it drops down
 			else:
 				enemies.enemies(SCREENWIDTH) # if false it continues to move.
 
