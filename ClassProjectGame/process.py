@@ -115,9 +115,7 @@ def collisions():
 
 			enemies.health = 0
 		
-			if projectile.if_this_variable_is_true_then_freeze:
-
-				enemies.image = image = pygame.image.load("images/snowman3.png") # regular snowball
+			enemies.image = image = pygame.image.load("images/snowman3.png") # regular snowball
 
 			# else:
 
