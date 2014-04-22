@@ -2,14 +2,15 @@
 
 import pygame, math
 from random import randint
-allsprites = pygame.sprite.Group()
+
 
 class BaseClass(pygame.sprite.Sprite):
 
+	allsprites = pygame.sprite.Group()
 	def __init__(self, x, y, image_string):
 		
 		pygame.sprite.Sprite.__init__(self)
-		allsprites.add(self)
+		BaseClass.allsprites.add(self)
 
 		self.image = pygame.image.load(image_string)
 
