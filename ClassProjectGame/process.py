@@ -115,7 +115,7 @@ def collisions():
 
 			enemies.health = 0
 		
-			enemies.image = image = pygame.image.load("images/snowman3.png") # regular snowball
+			enemies.image = image = pygame.image.load("images/enemie1snow.png") # regular snowball
 
 			# else:
 

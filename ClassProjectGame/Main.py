@@ -10,7 +10,7 @@ clock = pygame.time.Clock() # create an object to help track time
 FPS = 24 #Frames Per Second
 total_frames = 0 #keeps track of all the frames ever created in the game
 
-background = pygame.image.load("images/court1.png")
+background = pygame.image.load("images/white.png")
 player = Player(0, SCREENHEIGHT - 40, "images/player1.png")
 
 
