@@ -19,22 +19,22 @@ def process(player, FPS, total_frames):
 	#Sets the a and d keys to move the image a moves left
 	#d moves the image right when w is pressed it goes up and when 
 	#x is pressed the image moves down
-	if keys[pygame.K_d]:
+	if keys[pygame.K_RIGHT]:
 		classes.Player.going_right = True
 		player.image = pygame.image.load("images/player1.png")
 		player.velx = 5
 
-	elif keys[pygame.K_a]:
+	elif keys[pygame.K_LEFT]:
 		classes.Player.going_right = False
 		player.image = pygame.image.load("images/player1flip.png")
 		player.velx = -5
 	else:
 		player.velx = 0	
 
-	if keys[pygame.K_w]:
+	if keys[pygame.K_UP]:
 		player.vely = -5
 
-	elif keys[pygame.K_x]:
+	elif keys[pygame.K_DOWN]:
 		player.vely = 5
 
 	else:
@@ -128,61 +128,6 @@ def collisions():
 
 			projectile.rect.x = 2 * -projectile.rect.width
 			projectile.destroy()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
