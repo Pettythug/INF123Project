@@ -25,6 +25,7 @@ class Server(object):
         self.to_send.append(['draw', [rect.x, rect.y], id(image)])
 
     def end_frame(self):
+        # End frame and send position of objects to draw.
         self.to_send.append(['end'])
         for i, client in enumerate(self.clients):
             self._send_frame_to_client(i, client)
@@ -47,7 +48,7 @@ class Server(object):
         # listen on TCP/IP socket
         listen_socket = socket.socket()
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listen_socket.bind(('localhost', 8888))
+        listen_socket.bind(('localhost', 9999))
         listen_socket.listen(5)
         # Wait for all players to connect
         for i in xrange(n_players):

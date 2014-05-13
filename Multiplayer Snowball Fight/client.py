@@ -2,7 +2,6 @@ import pygame
 import socket
 import sys
 import json
-from network import interesting_keys
 
 SCREENWIDTH, SCREENHEIGHT = 640, 322
 
@@ -12,7 +11,7 @@ else:
     sys.exit('Usage: python client.py [server hostname]')
 
 sock = socket.socket()
-sock.connect((host, 8888))
+sock.connect((host, 9999))
 sock_file = sock.makefile('r+', 1)
 
 screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
@@ -38,6 +37,9 @@ for line in sock_file:
         pygame.event.pump()
 
         # Send currently pressed keys to server.
-        data = json.dumps(pygame.key.get_pressed())
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            break
+        data = json.dumps(keys)
         sock_file.write(data + '\n')
         sock_file.flush()
