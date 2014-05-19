@@ -1,64 +1,259 @@
+"""
+Simple JSON wrapper on top of asyncore TCP sockets.
+Provides on_open, on_close, on_msg, do_send, and do_close callbacks.
+
+Public domain
+
+With inspiration from:
+http://pymotw.com/2/asynchat/
+http://code.google.com/p/podsixnet/
+http://docstore.mik.ua/orelly/other/python/0596001886_pythonian-chp-19-sect-3.html
+
+
+#################
+# Echo server:
+#################
+from network import Listener, Handler, poll
+
+class MyHandler(Handler):
+    def on_msg(self, data):
+        self.do_send(data)
+
+class EchoServer(Listener):
+    handlerClass = MyHandler
+
+server = EchoServer(8888)
+while 1:
+    poll()
+
+
+#################
+# One-message client:
+#################
+from network import Handler, poll
+
+done = False
+
+class Client(Handler):
+    def on_open(self):
+        self.do_send({'a': [1,2], 5: 'hi'})
+        global done
+        done = True
+
+client = Client('localhost', 8888)
+while not done:
+    poll()
+client.do_close()
+
+"""
+
+from __future__ import print_function
+
+import asyncore
+import collections
+import logging
 import socket
-import pygame
 import json
-import threading
 
-interesting_keys = [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT,
-                    pygame.K_SPACE]
+#Uncomment this to see logging info
+#logging.basicConfig(level=logging.INFO)
 
-class Server(object):
-    def __init__(self):
-        self.clients = []
-        self.images_sent = set()
+MAX_MESSAGE_LENGTH=2048
 
-    def new_frame(self):
-        self.to_send = []
+# This will keep from messages building up. Increase for smoother appearance, but slower performance
+# and decrease for a little more studder but faster performance. Also,
+# this should be greater than or equal to the number of players desired
+MAX_QUEUE_SIZE = 8
 
-    def draw(self, rect, image):
-        if id(image) not in self.images_sent:
-            # Data for this image was not yet sent to clients.
-            size = image.get_size()
-            data = pygame.image.tostring(image, 'RGBA')
-            message = ['load', id(image), data.encode('base64'), size]
-            self.to_send.append(message)
-            self.images_sent.add(id(image))
-        self.to_send.append(['draw', [rect.x, rect.y], id(image)])
+class Client(asyncore.dispatcher):
 
-    def end_frame(self):
-        # End frame and send position of objects to draw.
-        self.to_send.append(['end'])
-        for i, client in enumerate(self.clients):
-            self._send_frame_to_client(i, client)
+    """ Represents a local client. This is used to keep track of the local player."""
 
-    def _send_frame_to_client(self, client_i, client):
-        for msg in self.to_send:
-            client.write(json.dumps(msg) + '\n')
-            client.flush()
+    def __init__(self, host, port, name):
+        asyncore.dispatcher.__init__(self)
 
-    def client_updater(self, i):
-        while True:
-            # Read keys status from client.
-            keys = json.loads(self.clients[i].readline())
-            self.pressed_keys[i] = keys
+        # Sets the logger for this class. The self.__class__.__name__ is just so that
+        # if we change the name of the class, we don't have to update this piece of code
+        self.log = logging.getLogger('{class_name} ({client_name})'.format(class_name=self.__class__.__name__,
+                                                                           client_name=name))
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.name = name
+        self.log.info('Connecting to host at {}'.format((host, port)))
+        self.connect((host, port))
+        # a dequeue is faster than an array
+        self.outbox = collections.deque()
+        self.terminator = '\n'
 
-    def start(self):
-        n_players = int(raw_input('Number of players: '))
-        # initially, all keys are off
-        self.pressed_keys = [ [0] * 400 for i in xrange(n_players) ]
-        # listen on TCP/IP socket
-        listen_socket = socket.socket()
-        listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listen_socket.bind(('localhost', 9999))
-        listen_socket.listen(5)
-        # Wait for all players to connect
-        for i in xrange(n_players):
-            sock, addr = listen_socket.accept()
-            print '%d player connected' % (i + 1)
-            file = sock.makefile('r+')
-            self.clients.append(file)
+    def do_send(self, message):
+        encoded_message = json.dumps(message, -1)        
+        if len(self.outbox) > MAX_QUEUE_SIZE:  #makes sure queue is a certain size
+            self.outbox.popleft()
+        self.outbox.append(encoded_message)
+        self.log.info('Enqueued message: {}'.format(message))
 
-        for i in xrange(n_players):
-            thread = threading.Thread(target=self.client_updater,
-                                      args=[i])
-            thread.daemon = True
-            thread.start()
+    def handle_write(self):
+        if not self.outbox:
+            return
+        message = self.outbox.popleft()+self.terminator
+        if len(message) > MAX_MESSAGE_LENGTH:
+            raise ValueError('Message too long')
+        self.send(message) #send message to socket
+
+    def handle_read(self):
+        # split the messages in case we get multiple at once
+        # the -1 is to remove the last element in the list
+        messages = self.recv(MAX_MESSAGE_LENGTH).split(self.terminator)[:-1]
+        for m in messages:
+                message = json.loads(m)
+                self.log.info('Received message: {}'.format(message))
+                self.on_msg(message)
+
+    def handle_close(self):
+        self.close()
+        self.on_close()
+
+    def do_close(self):
+        self.handle_close()
+
+    def handle_connect(self):
+        self.on_open()
+
+    def on_msg(self, data):
+        pass
+
+    def on_open(self):
+        pass
+
+    def on_close(self):
+        pass
+
+#asyncore
+class RemoteClient(asyncore.dispatcher):
+
+    """Wraps a remote client socket."""
+
+    def __init__(self, server, host, port, sock=None, name=''):
+        if sock:  # passive side: Handler automatically created by a Listener
+            asyncore.dispatcher.__init__(self, sock)
+        else:  # active side: Handler created manually
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP
+            asyncore.dispatcher.__init__(self, sock)
+            self.connect((host, port))  # asynchronous and non-blocking
+
+        self.name = name
+        self.friendly_name = self.name
+        self.server = server
+        self.outbox = collections.deque()
+        self.terminator = '\n'
+
+    def do_send(self, message, sender_id):
+        message = json.dumps((sender_id, message), -1)
+        if len(self.outbox) > MAX_QUEUE_SIZE:
+            self.outbox.popleft()
+        self.outbox.append(message)
+
+    #when a message is read from the outbox
+    #self.outbox = collections.deque()
+    def handle_read(self):
+        try:
+            # split the messages in case we get multiple at once
+            # the -1 is to remove the last element in the list
+            client_message = self.recv(MAX_MESSAGE_LENGTH)
+            messages = client_message.split(self.terminator)[:-1] #too many messages at the same time. Splits messages to parse
+            for m in messages:
+                self.server.broadcast(m, self.name)
+                self.on_msg((self.name, json.loads(m)))
+        except EOFError: #If we disconnect unexpectedly
+            self.server.log.info('Client {} Disconnected.'.format(self.friendly_name))
+            self.handle_close()
+
+    def handle_close(self):
+        self.close()
+        self.on_close()
+        if self in self.server.remote_clients:
+            self.server.remote_clients.remove(self)
+
+    def do_close(self):
+        self.handle_close()
+
+    def handle_connect(self):
+        self.on_open()
+
+    def handle_write(self):
+        if not self.outbox:
+            return
+        message = self.outbox.popleft()+self.terminator
+        if len(message) > MAX_MESSAGE_LENGTH:
+            raise ValueError('Message too long')
+        self.send(message)
+
+    def on_msg(self, data):
+        pass
+
+    def on_open(self):
+        pass
+
+    def on_close(self):
+        pass
+
+#asyncore.dispatcher - generic class to send and receive messages between other 
+#of the same classes
+
+class Server(asyncore.dispatcher):
+
+    def __init__(self, address=('localhost', 8888), handler=None):
+        asyncore.dispatcher.__init__(self)
+        self.next_player_id = 0
+
+        self.handler = handler or RemoteClient
+        #The name of the current class for the logger
+        self.log = logging.getLogger(self.__class__.__name__)
+
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.bind(address)
+        self.listen(5)
+        self.remote_clients = []
+        self.terminator = '\n'
+
+        #make an id for a newly connected player
+    def generate_name(self):
+        self.next_player_id += 1
+        return str(self.next_player_id)
+
+    def handle_accept(self):
+        socket, (host, port) = self.accept() # For the remote client.
+        self.log.info('Accepted client at {}'.format((host, port)))
+        h = self.handler(self, host, port, socket, name=self.generate_name())
+        self.remote_clients.append(h)
+        self.on_accept(h)
+        h.on_open()
+
+    def handle_read(self):
+        message = json.loads(self.read())
+        self.log.info('Received message: {}'.format(message))
+
+    def broadcast(self, message, client_id):
+        try:
+            message = json.loads(message)
+            self.log.info('Broadcasting message: {}'.format(message))
+            for remote_client in self.remote_clients:
+                remote_client.do_send(message, client_id)
+        except EOFError: #If the client disconnects unexpectedly
+            self.log.info('Client {} closed.'.format(client_id))
+
+    def handle_close(self):
+        for rc in self.remote_clients:
+            rc.handle_close()
+        self.close()
+
+    def stop(self):
+        self.handle_close()
+
+    def on_accept(self, handler):
+        pass
+
+    def serve(self):
+        asyncore.loop()
+
+def poll():
+    asyncore.loop(timeout=0, count=1)
