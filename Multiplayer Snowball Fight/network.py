@@ -1,5 +1,5 @@
 """
-Simple JSON wrapper on top of asyncore TCP sockets.
+Simple JSON wrapper on top of asyncore TCP sockets. 
 Provides on_open, on_close, on_msg, do_send, and do_close callbacks.
 
 Public domain
@@ -19,10 +19,7 @@ class MyHandler(Handler):
     def on_msg(self, data):
         self.do_send(data)
 
-class EchoServer(Listener):
-    handlerClass = MyHandler
-
-server = EchoServer(8888)
+server = Listener(8888, MyHandler)
 while 1:
     poll()
 
@@ -47,211 +44,119 @@ client.do_close()
 
 """
 
-from __future__ import print_function
-
+import asynchat
 import asyncore
-import collections
-import logging
-import socket
 import json
+import os
+import socket
 
-#Uncomment this to see logging info
-#logging.basicConfig(level=logging.INFO)
-
-MAX_MESSAGE_LENGTH=2048
-
-# This will keep from messages building up. Increase for smoother appearance, but slower performance
-# and decrease for a little more studder but faster performance. Also,
-# this should be greater than or equal to the number of players desired
-MAX_QUEUE_SIZE = 8
-
-class Client(asyncore.dispatcher):
-
-    """ Represents a local client. This is used to keep track of the local player."""
-
-    def __init__(self, host, port, name):
-        asyncore.dispatcher.__init__(self)
-
-        # Sets the logger for this class. The self.__class__.__name__ is just so that
-        # if we change the name of the class, we don't have to update this piece of code
-        self.log = logging.getLogger('{class_name} ({client_name})'.format(class_name=self.__class__.__name__,
-                                                                           client_name=name))
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.name = name
-        self.log.info('Connecting to host at {}'.format((host, port)))
-        self.connect((host, port))
-        # a dequeue is faster than an array
-        self.outbox = collections.deque()
-        self.terminator = '\n'
-
-    def do_send(self, message):
-        encoded_message = json.dumps(message, -1)
-        if len(self.outbox) > MAX_QUEUE_SIZE:  #makes sure queue is a certain size
-            self.outbox.popleft()
-        self.outbox.append(encoded_message)
-        self.log.info('Enqueued message: {}'.format(message))
-
-    def handle_write(self):
-        if not self.outbox:
-            return
-        message = self.outbox.popleft()+self.terminator
-        if len(message) > MAX_MESSAGE_LENGTH:
-            raise ValueError('Message too long')
-        self.send(message) #send message to socket
-
-    def handle_read(self):
-        # split the messages in case we get multiple at once
-        # the -1 is to remove the last element in the list
-        messages = self.recv(MAX_MESSAGE_LENGTH).split(self.terminator)[:-1]
-        for m in messages:
-                message = json.loads(m)
-                self.log.info('Received message: {}'.format(message))
-                self.on_msg(message)
-
-    def handle_close(self):
-        self.close()
-        self.on_close()
-
-    def do_close(self):
-        self.handle_close()
-
-    def handle_connect(self):
-        self.on_open()
-
-    def on_msg(self, data):
-        pass
-
-    def on_open(self):
-        pass
-
-    def on_close(self):
-        pass
-
-class RemoteClient(asyncore.dispatcher):
-
-    """Wraps a remote client socket."""
-
-    def __init__(self, server, host, port, sock=None, name=''):
+class Handler(asynchat.async_chat):
+    
+    def __init__(self, host, port, sock=None):
         if sock:  # passive side: Handler automatically created by a Listener
-            asyncore.dispatcher.__init__(self, sock)
+            asynchat.async_chat.__init__(self, sock)
         else:  # active side: Handler created manually
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP
-            asyncore.dispatcher.__init__(self, sock)
+            asynchat.async_chat.__init__(self, sock)
             self.connect((host, port))  # asynchronous and non-blocking
+        self.set_terminator('\0')
+        self._buffer = []
+        
+    def collect_incoming_data(self, data):
+        self._buffer.append(data)
 
-        self.name = name
-        self.friendly_name = self.name
-        self.server = server
-        self.outbox = collections.deque()
-        self.terminator = '\n'
-
-    def do_send(self, message, sender_id):
-        message = json.dumps((sender_id, message), -1)
-        if len(self.outbox) > MAX_QUEUE_SIZE:
-            self.outbox.popleft()
-        self.outbox.append(message)
-
-    #when a message is read from the outbox
-    #self.outbox = collections.deque()
-    def handle_read(self):
-        try:
-            # split the messages in case we get multiple at once
-            # the -1 is to remove the last element in the list
-            client_message = self.recv(MAX_MESSAGE_LENGTH)
-            messages = client_message.split(self.terminator)[:-1] #too many messages at the same time. Splits messages to parse
-            for m in messages:
-                self.server.broadcast(m, self.name)
-                self.on_msg((self.name, json.loads(m)))
-        except EOFError: #If we disconnect unexpectedly
-            self.server.log.info('Client {} Disconnected.'.format(self.friendly_name))
-            self.handle_close()
-
+    def found_terminator(self):
+        msg = self.decode(''.join(self._buffer))
+        self._buffer = []
+        self.on_msg(msg)
+    
     def handle_close(self):
         self.close()
         self.on_close()
-        if self in self.server.remote_clients:
-            self.server.remote_clients.remove(self)
 
-    def do_close(self):
-        self.handle_close()
-
-    def handle_connect(self):
+    def handle_connect(self):  # called on the active side
         self.on_open()
-
-    def handle_write(self):
-        if not self.outbox:
-            return
-        message = self.outbox.popleft()+self.terminator
-        if len(message) > MAX_MESSAGE_LENGTH:
-            raise ValueError('Message too long')
-        self.send(message)
-
-    def on_msg(self, data):
-        pass
-
+        
+    # API you can use
+    def do_send(self, msg):
+        self.push(self.encode(msg) + '\0')
+        
+    def do_close(self):
+        self.handle_close()  # will call self.on_close
+    
+    def encode(self, msg):
+        # return base64.b64encode(zlib.compress(msg))
+        return json.dumps(msg)
+    
+    def decode(self, msg):
+        # return base64.b64decode(zlib.decompress(msg))
+        return json.loads(msg)
+    
+    # callbacks you should override
     def on_open(self):
         pass
-
+        
     def on_close(self):
         pass
-
-#asyncore.dispatcher - generic class to send and receive messages between other 
-#of the same classes
-class Server(asyncore.dispatcher):
-
-    def __init__(self, address=('localhost', 8888), handler=None):
+        
+    def on_msg(self, data):
+        pass
+    
+    
+class Listener(asyncore.dispatcher):
+    
+    def __init__(self, port, handler_class):
         asyncore.dispatcher.__init__(self)
-        self.next_player_id = 0
+        self.handler_class = handler_class
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP
+        self.bind(('', port))
+        self.listen(5)  # max 5 incoming connections at once (Windows' limit)
 
-        self.handler = handler or RemoteClient
-        #The name of the current class for the logger
-        self.log = logging.getLogger(self.__class__.__name__)
-
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.bind(address)
-        self.listen(5)
-        self.remote_clients = []
-        self.terminator = '\n'
-
-        #make an id for a newly connected player
-    def generate_name(self):
-        self.next_player_id += 1
-        return str(self.next_player_id)
-
-    def handle_accept(self):
-        socket, (host, port) = self.accept() # For the remote client.
-        self.log.info('Accepted client at {}'.format((host, port)))
-        h = self.handler(self, host, port, socket, name=self.generate_name())
-        self.remote_clients.append(h)
-        self.on_accept(h)
-        h.on_open()
-
-    def handle_read(self):
-        message = json.loads(self.read())
-        self.log.info('Received message: {}'.format(message))
-
-    def broadcast(self, message, client_id):
-        try:
-            message = json.loads(message)
-            self.log.info('Broadcasting message: {}'.format(message))
-            for remote_client in self.remote_clients:
-                remote_client.do_send(message, client_id)
-        except EOFError: #If the client disconnects unexpectedly
-            self.log.info('Client {} closed.'.format(client_id))
-
-    def handle_close(self):
-        for rc in self.remote_clients:
-            rc.handle_close()
+    def handle_accept(self):  # called on the passive side
+        accept_result = self.accept()
+        if accept_result:  # None if connection blocked or aborted
+            sock, (host, port) = accept_result
+            h = self.handler_class(host, port, sock)
+            self.on_accept(h)
+            h.on_open()
+    
+    # API you can use
+    def stop(self):
         self.close()
 
-    def stop(self):
-        self.handle_close()
-
-    def on_accept(self, handler):
+    # callbacks you override
+    def on_accept(self, h):
         pass
+    
+    
+def poll(timeout=0):
+    asyncore.loop(timeout=timeout, count=1)  # return right away
 
-    def serve(self):
-        asyncore.loop()
 
-def poll():
-    asyncore.loop(timeout=0, count=1)
+def get_my_ip():
+    """ Get my network interface's IP, not localhost's IP.
+    From http://stackoverflow.com/a/1947766/856897
+    """
+    ip = socket.gethostbyname(socket.gethostname())
+    # Some versions of Ubuntu may return 127.0.0.1
+    if os.name != "nt" and ip.startswith("127."):
+        import fcntl  # not available on Windows
+        import struct
+        interfaces = ["eth0", "eth1", "eth2", "wlan0",
+                      "wlan1", "wifi0", "ath0", "ath1", "ppp0"]
+        for ifname in interfaces:
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(),
+                                                  0x8915,  # SIOCGIFADDR
+                                                  struct.pack('256s', ifname[:15])
+                                                  )[20:24])
+                break;
+            except IOError:
+                pass
+    return ip
+
+
+                
+if __name__ == '__main__':
+    print get_my_ip()
