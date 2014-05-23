@@ -523,11 +523,16 @@ while RUNNING:
         if event.type == QUIT:
             cmds.append('quit')
             #client.close()
-        if event.type == KEYDOWN: # when the key is held down, we still want it to exist
+        elif event.type == KEYUP: # get rid of the command once the key is up
             key = event.key
             try:
-                cmds.append(keys[key])
-            except KeyError:
+                print "List: ", cmds
+                print "Key to remove: ", key #HI JOE. FIX THIS!!!
+                if key in cmds:
+                    cmds.remove(keys[key])
+                    print "List: ", cmds
+                    print "Removed: ", key
+            except KeyError, ValueError:
                 pass
             # we check the space command here because we only want a snowball
             # thrown once, not rapid fire :)
