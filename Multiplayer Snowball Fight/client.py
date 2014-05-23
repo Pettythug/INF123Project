@@ -276,7 +276,7 @@ def process(player, FPS, total_frames, client):
     spawn(FPS, total_frames) #calls the enemie so it spawns a new one according to the time.
     collisions()
 
-#Creates enemies
+#Creates enemies on client-side 
 def spawn(FPS, total_frames):
 
     sixty_seconds = FPS * 15 #spaws a new enemy every sixty seconds
@@ -460,7 +460,7 @@ class GameClient(Client):
                 self.events[event](sender_id, data[event])
 
 
-host, port = 'localhost', 8888
+host, port = '169.234.123.52', 8888
 client = GameClient(host, port, myname) #create a local client
 client.do_send({'join': myname})
 
@@ -534,12 +534,12 @@ while RUNNING:
             if 'space' in cmds:
                 msg = {'space': [player.rect.x, player.rect.y]}
                 client.do_send(msg)
-        elif event.type == KEYUP: # get rid of the command once the key is up
-            key = event.key
-            try:
-                cmds.remove(keys[key])
-            except KeyError, ValueError:
-                pass
+#         elif event.type == KEYUP: # get rid of the command once the key is up
+#             key = event.key
+#             try:
+#                 cmds.remove(keys[key])
+#             except KeyError, ValueError:
+#                 pass
     for cmd in cmds:
         #Process the commands and send them to all the children
         if cmd in move_events:

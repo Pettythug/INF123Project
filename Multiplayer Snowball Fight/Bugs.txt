@@ -1,0 +1,6 @@
+----------BUGS--------------
+
+UPDATED: 5/20/15
+
+1) Line 540 in client.py causes crashing 
+2) Different number of enemies in different clients

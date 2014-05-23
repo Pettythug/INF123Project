@@ -10,7 +10,6 @@ from network import Server, RemoteClient
 from random import randint
 from time import sleep
 import asyncore
-import cPickle as pickle
 from collections import OrderedDict
 #dictionary key: event name
 #   value = args to event function
@@ -140,6 +139,7 @@ class GameServer(Server):
         asyncore.loop(timeout=0, count=1) # return right away
 
     def serve(self):
+        print "**Connected to server**"
         while True:
             self.poll()
 

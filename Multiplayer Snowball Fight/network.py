@@ -85,7 +85,7 @@ class Client(asyncore.dispatcher):
         self.terminator = '\n'
 
     def do_send(self, message):
-        encoded_message = json.dumps(message, -1)        
+        encoded_message = json.dumps(message, -1)
         if len(self.outbox) > MAX_QUEUE_SIZE:  #makes sure queue is a certain size
             self.outbox.popleft()
         self.outbox.append(encoded_message)
@@ -127,7 +127,6 @@ class Client(asyncore.dispatcher):
     def on_close(self):
         pass
 
-#asyncore
 class RemoteClient(asyncore.dispatcher):
 
     """Wraps a remote client socket."""
@@ -198,7 +197,6 @@ class RemoteClient(asyncore.dispatcher):
 
 #asyncore.dispatcher - generic class to send and receive messages between other 
 #of the same classes
-
 class Server(asyncore.dispatcher):
 
     def __init__(self, address=('localhost', 8888), handler=None):
