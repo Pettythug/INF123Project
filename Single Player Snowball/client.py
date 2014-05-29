@@ -1,12 +1,13 @@
 from network import Handler, poll
-import sys, math, random
+import sys, math, random, os
 from random import randint
 
 from threading import Thread
 from time import sleep
 import pygame
 
-from pygame.locals import KEYDOWN, QUIT, K_ESCAPE, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
+from pygame.locals import KEYDOWN,KEYUP, QUIT, K_ESCAPE, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
+
 class BaseClass(pygame.sprite.Sprite):
 
     allsprites = pygame.sprite.Group()
@@ -20,112 +21,69 @@ class BaseClass(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        
-        self.rect.height
 
 
-    def destroy(self, ClassName):
-        
-        ClassName.List.remove(self)
-        allsprites.remove(self)
+    def destroy(self):
+        self.allsprites.remove(self)
         del self
-
 class Player(BaseClass):
 
     List = pygame.sprite.Group()
     going_right = True
-    keys_pressed=[False, False, False, False]
 
     def __init__(self, x, y, image_string):
         
         BaseClass.__init__(self, x, y, image_string)
         Player.List.add(self)
-        self.velx, self.vely = 0, 5 #The image will move 5 pixels every frame refresh
-        self.jumping, self.go_down = False, False #jumping needs to be true if image is going up or down and 
-        # go_down is for if the image has hit the max_jump pixel limit set
-        
-
-    def motion(self, SCREENWIDTH, SCREENHEIGHT):
-
-        #Stops the image from leaving the screen
-        #There is a little bounce back so this keeps that from happening
-        #by checking to see where it is and where it will be before 
-        #the image gets to the wall
-        predicted_locationx = self.rect.x + self.velx
-        predicted_locationy = self.rect.y + self.vely
-
-        if  predicted_locationx < 0:
-            self.velx = 0
-        elif predicted_locationx + self.rect.width > SCREENWIDTH:
-            self.velx = 0
-        if predicted_locationy < 0:
-            self.vely = 0 
-        elif predicted_locationy + self.rect.height > SCREENHEIGHT:
-            self.vely = 0 
-
-        
-        self.rect.x += self.velx
-        self.rect.y += self.vely
-
-        self._jump(SCREENHEIGHT)
-
-    def _jump(self, SCREENHEIGHT):
-         
-        max_jump =  75     # how many pixels down from the top the 
-                        # max jump is the height the image can jump to
-
-        if self.jumping:
-
-            if self.rect.y < max_jump:
-                self.go_down = True # our cue to start going down
-
-            if self.go_down:
-                self.rect.y += self.vely #going down
-
-                predicted_locationy = self.rect.y + self.vely # helps to predict where the player is going to be next. 
-
-                if predicted_locationy + self.rect.height > SCREENHEIGHT: #is it past our screen bottom
-                    self.jumping = False #Stops the jumping 
-                    self.go_down = False #resets our going down varible
-
-            else:
-                self.rect.y -= self.vely # going up till hit max_jump
-
+    def destroy(self):
+        Player.List.remove(self)
+        super(Player,self).destroy()
 class Enemies(BaseClass):
-
     List = pygame.sprite.Group()
+    going_right = True
     def __init__(self, x, y, image_string):
         BaseClass.__init__(self, x, y, image_string)
         Enemies.List.add(self)
-        self.health = 100
-        self.half_health = self.health ## / 2.0 will make it so you have to hit the enemy twice in order to kill it
-        self.velx, self.vely = randint(1, 4), 2
-        self.amplitude, self.period = randint(20, 140), randint(4, 5)/ 100.0
+    def destroy(self):
+        Enemies.List.remove(self)
+        super(Enemies,self).destroy()
 
-    @staticmethod
-    def update_all(SCREENWIDTH, SCREENHEIGHT):
+def enemy_count(count):
+    while count>len(Enemies.List)+1:
+        Enemies(-100,-100,"images/enemie1.png")
+    if count<len(Enemies.List)+1:
+        for i,enemy in enumerate(Enemies.List):
+            if i<(len(Enemies.List)+1-count):
+                enemy.destroy()
+
+
+def show_snowballs(snowballs):
+    while len(snowballs)>len(Snowballs.List):
+        Snowballs(-100,-100,"images/projectiles/snowball1.png")
+    if len(snowballs)<len(Snowballs.List):
+        for i,snowball in enumerate(Snowballs.List):
+            if i<(len(Snowballs.List)-len(snowballs)):
+                snowball.destroy()
+    for i,snowball in enumerate(Snowballs.List):
+        snowball.rect.x=snowballs[i][0]
+        snowball.rect.y=snowballs[i][1]
+
+
+class Snowballs(pygame.sprite.Sprite):
+    List = pygame.sprite.Group()
+    
+    def __init__(self, x, y, image_string):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(image_string)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        Snowballs.List.add(self)
         
-        for enemies in Enemies.List:
-
-            if enemies.health <= 0: # if our enemies is dead
-                if enemies.rect.y + enemies.rect.height < SCREENHEIGHT: # check to see if it is still above the bottom 
-                    enemies.velx = 0 # if true it drops down
-            else:
-                enemies.enemies(SCREENWIDTH) # if false it continues to move.
-        
-
-    def enemies(self, SCREENWIDTH):
-        #Keeps the enemy from being dropped outside the screen
-        if self.rect.x + self.rect.width > SCREENWIDTH or self.rect.x < 0:
-            self.image = pygame.transform.flip(self.image, True, False)
-            self.velx = -self.velx
-
-        self.rect.x += self.velx
-
-        #Sin couve is -- (a * sin( bx + c ) + y)
-
-        self.rect.y = self.amplitude * math.sin(self.period * self.rect.x) + 140
-
+    def destroy(self):
+        Snowballs.List.remove(self)
+        del self
+"""
     
 class PlayerProjectile(pygame.sprite.Sprite):  #Extended with sprite which contains all the infor we need for a rect and image
 
@@ -251,7 +209,6 @@ def process(player, FPS, total_frames):
     #Enemies(640 - 40, 130, 26, 40, "images/enemie1flip.png")
     spawn(FPS, total_frames) #calls the enemie so it spawns a new one according to the time.
     collisions()
-
     #Creates enemies 
 def spawn(FPS, total_frames):
 
@@ -284,34 +241,56 @@ def collisions():
             
             projectile.rect.x = 2 * -projectile.rect.width
             projectile.destroy()
+"""
 
-#myname = raw_input('What is your name? ')
-myname="Lucy"
+myname = raw_input('What is your name? ')
+#myname="Lucy"
+
+
+        
+player = Player(-100, -100, "images/player1.png")
+host, port = 'localhost', 8888
 class Client(Handler):
     
     def on_close(self):
+        client.do_send({'speak': myname, 'txt': "quit"})
         print "** Disconnected from server **"
-        sys.exit(0)
+        os._exit(0)
     
     def on_msg(self, msg):
-        print msg
+        #print msg
+        if msg[0]=="userjoin":
+            enemy_count(msg[1])
+        elif msg[0]=="userleave":
+            enemy_count(msg[1])
+        elif msg[0]=="positions:":
+            enemy_count(msg[3])
+            enemypositions=[pos for i,pos in enumerate(msg[2]) if i != msg[1]]
+            for i,enemy in enumerate(Enemies.List):
+                enemy.rect.x=enemypositions[i][0]
+                enemy.rect.y=enemypositions[i][1]
+                if enemy.going_right!=enemypositions[i][2]:
+                    enemy.going_right=enemypositions[i][2]
+                    if enemy.going_right:
+                        enemy.image = pygame.image.load("images/enemie1.png")
+                    else:
+                        enemy.image = pygame.image.load("images/enemie1flip.png")
+            player.rect.x=msg[2][msg[1]][0]
+            player.rect.y=msg[2][msg[1]][1]
+            if player.going_right!=msg[2][msg[1]][2]:
+                player.going_right=msg[2][msg[1]][2]
+                if player.going_right:
+                    player.image = pygame.image.load("images/player1.png")
+                else:
+                    player.image = pygame.image.load("images/player1flip.png")
+            show_snowballs(msg[4])
         
-host, port = 'localhost', 8888
 client = Client(host, port)
 client.do_send({'join': myname})
 
-def periodic_poll():
-    while 1:
-        poll()
-        sleep(0.05)  # seconds
 
 
 ##########################################   Main   ##################################################
-
-                            
-thread = Thread(target=periodic_poll)
-thread.daemon = True  # die when the main thread dies 
-thread.start()
 
 pygame.init()
 # screen = pygame.display.set_mode((400, 300))     
@@ -322,50 +301,54 @@ FPS = 24 #Frames Per Second
 total_frames = 0 #keeps track of all the frames ever created in the game
 
 background = pygame.image.load("images/white.png")
-player = Player(0, SCREENHEIGHT - 40, "images/player1.png")
+
+
 
 
 
 
 while 1:
+    poll()
+    sleep(.02)
+    """
     process(player, FPS, total_frames)
     #LOGIC
     player.motion(SCREENWIDTH, SCREENHEIGHT)
     Enemies.update_all(SCREENWIDTH, SCREENHEIGHT)
     PlayerProjectile.movement()
+    """
     total_frames += 1
     #LOGIC
     #DRAW
     screen.blit(background, (0,0) )    
-    BaseClass.allsprites.draw(screen)    
-    PlayerProjectile.List.draw(screen)    
+    BaseClass.allsprites.draw(screen)
+    Snowballs.List.draw(screen)
     pygame.display.flip() #Update the full display Surface to the screen
     #DRAW
-
     clock.tick(FPS)
     cmd = None
     for event in pygame.event.get():  # inputs
-        if event.type == QUIT:
-            cmd = 'quit'
         if event.type == KEYDOWN:
             key = event.key
             if key == K_ESCAPE:
-                cmd = 'quit'
                 client.do_close()
             elif key == K_UP:
-                cmd = 'up'
-                client.do_send({'speak': myname, 'txt': "Up key"})
+                client.do_send({'speak': myname, 'txt': "Up"})
             elif key == K_DOWN:
-                cmd = 'down' 
-                client.do_send({'speak': myname, 'txt': "Down key"})
+                client.do_send({'speak': myname, 'txt': "Down"})
             elif key == K_LEFT:
-                cmd = 'left'
-                client.do_send({'speak': myname, 'txt': "Left key"})
+                client.do_send({'speak': myname, 'txt': "Left"})
             elif key == K_RIGHT:
-                cmd = 'right'
-                client.do_send({'speak': myname, 'txt': "Right key"})
+                client.do_send({'speak': myname, 'txt': "Right"})
             elif key == K_SPACE:
-                cmd = 'space'
-                client.do_send({'speak': myname, 'txt': "Spacebar key"})
-    if cmd:
-        print cmd
+                client.do_send({'speak': myname, 'txt': "Spacebar"})
+        elif event.type == KEYUP:
+            key = event.key
+            if key == K_UP:
+                client.do_send({'speak': myname, 'txt': "NoUp"})
+            elif key == K_DOWN:
+                client.do_send({'speak': myname, 'txt': "NoDown"})
+            elif key == K_LEFT:
+                client.do_send({'speak': myname, 'txt': "NoLeft"})
+            elif key == K_RIGHT:
+                client.do_send({'speak': myname, 'txt': "NoRight"})
