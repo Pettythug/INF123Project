@@ -222,14 +222,14 @@ def spawn(FPS, total_frames):
         if r == 2:
             x = 640 - 40
         Enemies(x, 130, "images/enemie1.png")
-
+"""
 def collisions():
 
     
 
     for enemies in Enemies.List:
 
-        projectiles = pygame.sprite.spritecollide(enemies, PlayerProjectile.List, True) # when a player projectile collides with a enemy it returns the projectiles in the projectiles list
+        projectiles = pygame.sprite.spritecollide(enemies, Snowballs.List, True) # when a player projectile collides with a enemy it returns the projectiles in the projectiles list
 
         for projectile in projectiles:
 
@@ -241,7 +241,7 @@ def collisions():
             
             projectile.rect.x = 2 * -projectile.rect.width
             projectile.destroy()
-"""
+
 
 myname = raw_input('What is your name? ')
 #myname="Lucy"
@@ -294,13 +294,16 @@ client.do_send({'join': myname})
 
 pygame.init()
 # screen = pygame.display.set_mode((400, 300))     
-SCREENWIDTH,SCREENHEIGHT = 640, 322
+SCREENWIDTH,SCREENHEIGHT = 1200, 800
 screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT), 0, 32) #Initialize a window or screen for display. Sets the size of the screen (640, 360), the flags 0, and the color 32.
 clock = pygame.time.Clock() # create an object to help track time
 FPS = 24 #Frames Per Second
 total_frames = 0 #keeps track of all the frames ever created in the game
 
-background = pygame.image.load("images/white.png")
+background = pygame.Surface(screen.get_size())
+background = background.convert()
+background.fill((250, 250, 250))
+
 
 
 
@@ -326,6 +329,7 @@ while 1:
     pygame.display.flip() #Update the full display Surface to the screen
     #DRAW
     clock.tick(FPS)
+    collisions()
     cmd = None
     for event in pygame.event.get():  # inputs
         if event.type == KEYDOWN:

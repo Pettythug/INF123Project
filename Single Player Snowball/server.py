@@ -5,14 +5,14 @@ from random import randint
 
 users = {}  # map client handler to user name
 snowballs =[]
-SCREENWIDTH,SCREENHEIGHT = 640, 322
+SCREENWIDTH,SCREENHEIGHT = 1200, 800
 playerspeed=5
 playerheight=40
 playerwidth=30
 playerthrowcooldown=10
-snowballspeed=20
+snowballspeed=8
 snowballwidth=10
-snowballlife=10
+snowballlife=50
 def update():
     for i,snowball in reversed(list(enumerate(snowballs))):
         snowball[3]-=1
