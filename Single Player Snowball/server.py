@@ -107,6 +107,15 @@ class MyHandler(Handler):
                         user[2][2]=1
                     elif msg['txt']==("Right"):
                         user[2][3]=1
+        if 'hit' in msg:
+            for user in users.itervalues():
+                print user[1][0]
+                print msg['txt'][0]
+                print msg['txt'][1]
+                if user[1][0] == msg['txt'][0]:
+                    if user[1][1] == msg['txt'][1]:
+                        user[0].do_send("hit",("hit"))
+                
 
     
 class Serv(Listener):

@@ -8,6 +8,9 @@ import pygame
 
 from pygame.locals import KEYDOWN,KEYUP, QUIT, K_ESCAPE, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
 
+hit = False
+
+
 class BaseClass(pygame.sprite.Sprite):
 
     allsprites = pygame.sprite.Group()
@@ -45,8 +48,9 @@ class Enemies(BaseClass):
         BaseClass.__init__(self, x, y, image_string)
         Enemies.List.add(self)
     def destroy(self):
-        Enemies.List.remove(self)
-        super(Enemies,self).destroy()
+        for enemy in Enemies.List:
+            if enemy == enemyHit:
+                enemy.List.remove()
 
 def enemy_count(count):
     while count>len(Enemies.List)+1:
@@ -237,11 +241,22 @@ def collisions():
             enemies.health = 0
         
             enemies.image = image = pygame.image.load("images/enemie1snow.png") # regular snowball
-
+            global xIn
+            xIn = enemies.rect.x
+            global yIn
+            yIn =  enemies.rect.y
+            
+            global enemyHit
+            enemyHit = enemies            
             
             projectile.rect.x = 2 * -projectile.rect.width
             projectile.destroy()
-
+            
+            global hit 
+            hit = True
+            #enemies.destroy()
+            
+            
 
 myname = raw_input('What is your name? ')
 #myname="Lucy"
@@ -272,9 +287,15 @@ class Client(Handler):
                 if enemy.going_right!=enemypositions[i][2]:
                     enemy.going_right=enemypositions[i][2]
                     if enemy.going_right:
-                        enemy.image = pygame.image.load("images/enemie1.png")
+                        if hit:
+                            enemy.image = pygame.image.load("images/enemie1snow.png")
+                        else:
+                            enemy.image = pygame.image.load("images/enemie1.png")
                     else:
-                        enemy.image = pygame.image.load("images/enemie1flip.png")
+                        if hit:
+                            enemy.image = pygame.image.load("images/enemie1snow.png")
+                        else:
+                            enemy.image = pygame.image.load("images/enemie1flip.png")
             player.rect.x=msg[2][msg[1]][0]
             player.rect.y=msg[2][msg[1]][1]
             if player.going_right!=msg[2][msg[1]][2]:
@@ -284,6 +305,8 @@ class Client(Handler):
                 else:
                     player.image = pygame.image.load("images/player1flip.png")
             show_snowballs(msg[4])
+        elif msg[0]=="hit":
+            player.image = pygame.image.load("images/player1snow.png")
         
 client = Client(host, port)
 client.do_send({'join': myname})
@@ -330,6 +353,9 @@ while 1:
     #DRAW
     clock.tick(FPS)
     collisions()
+    if hit:
+        client.do_send({'hit': myname, 'txt': (xIn,yIn)})
+        
     cmd = None
     for event in pygame.event.get():  # inputs
         if event.type == KEYDOWN:
@@ -356,3 +382,4 @@ while 1:
                 client.do_send({'speak': myname, 'txt': "NoLeft"})
             elif key == K_RIGHT:
                 client.do_send({'speak': myname, 'txt': "NoRight"})
+    
