@@ -1,0 +1,1 @@
+client stops when the enemy is hit by a snowball. 
