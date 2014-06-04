@@ -302,7 +302,6 @@ class Client(Handler):
                     player.image = pygame.image.load("images/player1flip.png")
             show_snowballs(msg[4])
         elif msg[1]=="hit":
-            player.do_send("Sucks")
             player.image = pygame.image.load("images/player1snow.png")
         
 client = Client(host, port)
