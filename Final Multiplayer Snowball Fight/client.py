@@ -87,11 +87,10 @@ class Snowballs(pygame.sprite.Sprite):
         del self
 
 myname = raw_input('What is your name? ')
-#myname="Lucy"
 
 
 player = Player(-100, -100, "images/player1.png")
-host, port = '174.67.219.129', 8888
+host, port = '169.234.3.189', 8888
 class Client(Handler):
     scoreboard={}
     def on_close(self):
