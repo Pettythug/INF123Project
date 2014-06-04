@@ -304,7 +304,7 @@ class Client(Handler):
         elif msg[1]=="hit":
             print "Game Over"
             player.do_send('hit', "hit")
-            player.image = pygame.image.load("images/player1snow.png")
+            
         
 client = Client(host, port)
 client.do_send({'join': myname})
