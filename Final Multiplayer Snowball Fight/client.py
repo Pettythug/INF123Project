@@ -91,7 +91,7 @@ myname = raw_input('What is your name? ')
 
 
 player = Player(-100, -100, "images/player1.png")
-host, port = 'localhost', 8888
+host, port = '174.67.219.129', 8888
 class Client(Handler):
     scoreboard={}
     def on_close(self):
