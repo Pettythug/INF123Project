@@ -108,10 +108,11 @@ class MyHandler(Handler):
                     elif msg['txt']==("Right"):
                         user[2][3]=1
         if 'hit' in msg:
-            if msg['txt']==("hit"):
-                user=users[msg['hit']]
-                if user is not self:
-                        print "you have been hit"
+            for user in users.itervalues():
+                if user[1][0] == msg['txt'][0]:
+                    if user[1][1] == msg['txt'][1]:
+                        user[0].do_send(("hit","hit"))
+                
 
     
 class Serv(Listener):

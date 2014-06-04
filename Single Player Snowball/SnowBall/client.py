@@ -240,14 +240,17 @@ def collisions():
             enemies.health = 0
         
             enemies.image = image = pygame.image.load("images/enemie1snow.png") # regular snowball
-            
-            
+            global xIn
+            xIn = enemies.rect.x
+            global yIn
+            yIn =  enemies.rect.y
+             
             projectile.rect.x = 2 * -projectile.rect.width
             projectile.destroy()
             
             global hit 
             hit = True
-            enemies.destroy()
+            #enemies.destroy()
             
             
 
@@ -257,7 +260,7 @@ myname = raw_input('What is your name? ')
 
         
 player = Player(-100, -100, "images/player1.png")
-host, port = 'localhost', 8888
+host, port = '169.234.40.155', 8888
 class Client(Handler):
     
     def on_close(self):
@@ -298,7 +301,8 @@ class Client(Handler):
                 else:
                     player.image = pygame.image.load("images/player1flip.png")
             show_snowballs(msg[4])
-        elif msg[0]=="hit":
+        elif msg[1]=="hit":
+            player.do_send("Sucks")
             player.image = pygame.image.load("images/player1snow.png")
         
 client = Client(host, port)
@@ -347,7 +351,8 @@ while 1:
     clock.tick(FPS)
     collisions()
     if hit:
-        client.do_send({'hit': myname, 'txt': "hit"})
+        client.do_send({'hit': myname, 'txt': (xIn,yIn)})
+        hit = False
         
     cmd = None
     for event in pygame.event.get():  # inputs
