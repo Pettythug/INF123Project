@@ -48,9 +48,8 @@ class Enemies(BaseClass):
         BaseClass.__init__(self, x, y, image_string)
         Enemies.List.add(self)
     def destroy(self):
-        for enemy in Enemies.List:
-            if enemy == enemyHit:
-                enemy.List.remove()
+        Enemies.List.remove(self)
+        super(Enemies,self).destroy()
 
 def enemy_count(count):
     while count>len(Enemies.List)+1:
@@ -245,10 +244,7 @@ def collisions():
             xIn = enemies.rect.x
             global yIn
             yIn =  enemies.rect.y
-            
-            global enemyHit
-            enemyHit = enemies            
-            
+             
             projectile.rect.x = 2 * -projectile.rect.width
             projectile.destroy()
             
@@ -264,7 +260,7 @@ myname = raw_input('What is your name? ')
 
         
 player = Player(-100, -100, "images/player1.png")
-host, port = 'localhost', 8888
+host, port = '169.234.40.211', 8888
 class Client(Handler):
     
     def on_close(self):
@@ -305,7 +301,8 @@ class Client(Handler):
                 else:
                     player.image = pygame.image.load("images/player1flip.png")
             show_snowballs(msg[4])
-        elif msg[0]=="hit":
+        elif msg[1]=="hit":
+            player.do_send("Sucks")
             player.image = pygame.image.load("images/player1snow.png")
         
 client = Client(host, port)
@@ -355,6 +352,7 @@ while 1:
     collisions()
     if hit:
         client.do_send({'hit': myname, 'txt': (xIn,yIn)})
+        hit = False
         
     cmd = None
     for event in pygame.event.get():  # inputs
