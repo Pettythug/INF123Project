@@ -260,7 +260,7 @@ myname = raw_input('What is your name? ')
 
         
 player = Player(-100, -100, "images/player1.png")
-host, port = '169.234.40.211', 8888
+host, port = 'localhost', 8888
 class Client(Handler):
     
     def on_close(self):
@@ -302,6 +302,8 @@ class Client(Handler):
                     player.image = pygame.image.load("images/player1flip.png")
             show_snowballs(msg[4])
         elif msg[1]=="hit":
+            print "Game Over"
+            player.do_send('hit', "hit")
             player.image = pygame.image.load("images/player1snow.png")
         
 client = Client(host, port)
